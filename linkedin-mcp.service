@@ -1,0 +1,12 @@
+[Unit]
+Description=LinkedIn MCP server (HTTP)
+After=network-online.target
+
+[Service]
+ExecStart=%h/.local/bin/linkedin-mcp http
+WorkingDirectory=%h/.config/linkedin-mcp
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target
