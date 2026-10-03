@@ -125,6 +125,12 @@ func (c *Client) uploadImage(owner, path string) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	// check content, not extension, so a non-image file can't be posted publicly
+	switch ct := http.DetectContentType(data); ct {
+	case "image/jpeg", "image/png", "image/gif":
+	default:
+		return "", fmt.Errorf("%s is %s, only jpg/png/gif allowed", path, ct)
+	}
 	var init struct {
 		Value struct {
 			UploadURL string `json:"uploadUrl"`
@@ -226,7 +232,7 @@ func (c *Client) CreatePost(in PostInput) (string, error) {
 }
 
 func (c *Client) DeletePost(urn string) error {
-	_, err := c.do("DELETE", "/rest/posts/"+url.PathEscape(urn), nil, nil)
+	_, err := c.do("DELETE", "/rest/posts/"+url.QueryEscape(urn), nil, nil)
 	return err
 }
 

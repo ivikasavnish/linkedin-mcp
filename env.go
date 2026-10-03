@@ -7,10 +7,10 @@ import (
 	"strings"
 )
 
-// loadEnv reads KEY=VALUE lines from ~/.config/linkedin-mcp/.env then ./.env.
-// Already-set env vars win.
+// loadEnv reads KEY=VALUE lines from ~/.config/linkedin-mcp/.env.
+// Already-set env vars win. ./.env is not read: a repo could plant one.
 func loadEnv() {
-	for _, p := range []string{filepath.Join(filepath.Dir(tokenPath()), ".env"), ".env"} {
+	for _, p := range []string{filepath.Join(filepath.Dir(tokenPath()), ".env")} {
 		f, err := os.Open(p)
 		if err != nil {
 			continue

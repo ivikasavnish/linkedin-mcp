@@ -20,18 +20,21 @@ Tools: `whoami`, `create_post` (text, #hashtags, images, link card, draft, compa
    ```sh
    cp linkedin-mcp.service ~/.config/systemd/user/
    systemctl --user enable --now linkedin-mcp
-   claude mcp add -s user --transport http linkedin http://127.0.0.1:8766/mcp
+   # set LINKEDIN_MCP_KEY in ~/.config/linkedin-mcp/.env first (e.g. openssl rand -hex 32)
+   claude mcp add -s user --transport http linkedin http://127.0.0.1:8766/mcp \
+     --header "Authorization: Bearer $KEY"
    ```
    Or stdio instead: `claude mcp add -s user linkedin -- ~/.local/bin/linkedin-mcp`
 
 ## Config
 
-Reads `~/.config/linkedin-mcp/.env`, then `./.env` (real env vars win). See `.env.example`.
+Reads `~/.config/linkedin-mcp/.env` only (real env vars win). See `.env.example`.
 
 ## Env
 
 - `LINKEDIN_ACCESS_TOKEN` — use this token instead of token.json
 - `LINKEDIN_API_VERSION` — `LinkedIn-Version` header (default `202607`)
+- `LINKEDIN_MCP_KEY` — required in http mode, clients must send `Authorization: Bearer <key>`
 - `LINKEDIN_MCP_ADDR` — HTTP listen addr (default `127.0.0.1:8766`, keep it on localhost)
 - `LINKEDIN_REDIRECT_URI` — OAuth callback (default `http://localhost:8779/auth/linkedin/callback`, must match app settings)
 - `LINKEDIN_SCOPES` — auth scopes (default `openid profile w_member_social`; add `w_organization_social` for company pages, needs Community Management API)

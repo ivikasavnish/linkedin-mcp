@@ -3,10 +3,12 @@ package main
 import (
 	"context"
 	"crypto/rand"
+	"crypto/subtle"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"log"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
@@ -34,16 +36,41 @@ func main() {
 		if addr == "" {
 			addr = "127.0.0.1:8766"
 		}
+		key := os.Getenv("LINKEDIN_MCP_KEY")
+		if key == "" {
+			log.Fatal("LINKEDIN_MCP_KEY is required in http mode (any local process could post as you otherwise)")
+		}
 		h := mcp.NewStreamableHTTPHandler(func(*http.Request) *mcp.Server { return newServer() }, nil)
 		log.Printf("linkedin-mcp listening on http://%s/mcp", addr)
 		mux := http.NewServeMux()
-		mux.Handle("/mcp", h)
+		mux.Handle("/mcp", requireKey(key, h))
 		log.Fatal(http.ListenAndServe(addr, mux))
 	default:
 		if err := newServer().Run(context.Background(), &mcp.StdioTransport{}); err != nil {
 			log.Fatal(err)
 		}
 	}
+}
+
+// requireKey rejects requests without the bearer key, and requests whose Host
+// isn't local (blocks DNS rebinding from a web page).
+func requireKey(key string, next http.Handler) http.Handler {
+	want := []byte("Bearer " + key)
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		host, _, err := net.SplitHostPort(r.Host)
+		if err != nil {
+			host = r.Host
+		}
+		if host != "127.0.0.1" && host != "localhost" && host != "::1" {
+			http.Error(w, "forbidden host", http.StatusForbidden)
+			return
+		}
+		if subtle.ConstantTimeCompare([]byte(r.Header.Get("Authorization")), want) != 1 {
+			http.Error(w, "unauthorized", http.StatusUnauthorized)
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
 }
 
 func client() (*Client, error) {
