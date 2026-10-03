@@ -87,6 +87,12 @@ func text(s string) *mcp.CallToolResult {
 
 type empty struct{}
 
+type commentInput struct {
+	URN    string `json:"urn" jsonschema:"post URN to comment on, e.g. urn:li:share:123"`
+	Text   string `json:"text" jsonschema:"comment text; **bold** and *italic* become Unicode bold/italic"`
+	Author string `json:"author,omitempty" jsonschema:"actor URN, default is you; use urn:li:organization:ID for a company page"`
+}
+
 type deleteInput struct {
 	URN string `json:"urn" jsonschema:"post URN returned by create_post, e.g. urn:li:share:123"`
 }
@@ -124,6 +130,26 @@ func newServer() *mcp.Server {
 				return text("draft saved: " + urn), nil, nil
 			}
 			return text(fmt.Sprintf("posted: %s\nhttps://www.linkedin.com/feed/update/%s/", urn, urn)), nil, nil
+		})
+
+	mcp.AddTool(s, &mcp.Tool{Name: "comment_post", Description: "Comment on a LinkedIn post. Comments are public — confirm content with the user first."},
+		func(ctx context.Context, req *mcp.CallToolRequest, in commentInput) (*mcp.CallToolResult, any, error) {
+			in.Text = formatText(in.Text)
+			if strings.TrimSpace(in.Text) == "" {
+				return nil, nil, fmt.Errorf("text is required")
+			}
+			if n := utf8.RuneCountInString(in.Text); n > 1250 {
+				return nil, nil, fmt.Errorf("comment is %d chars, LinkedIn max is 1250", n)
+			}
+			c, err := client()
+			if err != nil {
+				return nil, nil, err
+			}
+			urn, err := c.Comment(in.URN, in.Text, in.Author)
+			if err != nil {
+				return nil, nil, err
+			}
+			return text("commented: " + urn), nil, nil
 		})
 
 	mcp.AddTool(s, &mcp.Tool{Name: "delete_post", Description: "Delete a LinkedIn post by URN"},

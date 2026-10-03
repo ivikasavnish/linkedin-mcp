@@ -2,7 +2,7 @@
 
 MCP server (stdio) that posts to LinkedIn.
 
-Tools: `whoami`, `create_post` (text, #hashtags, images, link card, draft, company page author), `delete_post`.
+Tools: `whoami`, `create_post` (text, #hashtags, images, link card, draft, company page author), `comment_post`, `delete_post`.
 
 - `**bold**` and `*italic*` become Unicode bold/italic (LinkedIn's editor has neither)
 - Reserved characters escaped, so posts with `()`, `@`, `_` aren't cut short

@@ -231,6 +231,26 @@ func (c *Client) CreatePost(in PostInput) (string, error) {
 	return h.Get("X-Restli-Id"), nil
 }
 
+// Comment adds a comment to a post and returns the comment URN.
+// Uses /v2: /rest/socialActions needs the partner Community Management API.
+func (c *Client) Comment(postURN, text, actor string) (string, error) {
+	if actor == "" {
+		actor = c.tok.PersonURN
+	}
+	body := map[string]any{"actor": actor, "object": postURN, "message": map[string]any{"text": text}}
+	var out struct {
+		URN string `json:"commentUrn"`
+	}
+	h, err := c.do("POST", "/v2/socialActions/"+url.QueryEscape(postURN)+"/comments", body, &out)
+	if err != nil {
+		return "", err
+	}
+	if out.URN == "" {
+		out.URN = fmt.Sprintf("urn:li:comment:(%s,%s)", postURN, h.Get("X-Restli-Id"))
+	}
+	return out.URN, nil
+}
+
 func (c *Client) DeletePost(urn string) error {
 	_, err := c.do("DELETE", "/rest/posts/"+url.QueryEscape(urn), nil, nil)
 	return err
