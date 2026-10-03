@@ -1,6 +1,6 @@
 **It's open source now.** 🎉
 
-A few days ago I asked if I should open-source my LinkedIn MCP server. Here it is, MIT licensed:
+Earlier today I asked if I should open-source my LinkedIn MCP server. Here it is, MIT licensed:
 👉 github.com/ivikasavnish/linkedin-mcp
 
 **What you get:**
