@@ -4,6 +4,14 @@ MCP server (stdio) that posts to LinkedIn.
 
 Tools: `whoami`, `create_post` (text, #hashtags, images, link card, draft, company page author), `delete_post`.
 
+- `**bold**` and `*italic*` become Unicode bold/italic (LinkedIn's editor has neither)
+- Reserved characters escaped, so posts with `()`, `@`, `_` aren't cut short
+- `#word` becomes a real clickable hashtag
+- HTTP mode requires a bearer key and a local Host header
+- Images must actually be jpg/png/gif
+
+Example posts made with it: [posts/](posts/).
+
 ## Setup
 
 1. https://www.linkedin.com/developers/apps → create app.
@@ -38,3 +46,7 @@ Reads `~/.config/linkedin-mcp/.env` only (real env vars win). See `.env.example`
 - `LINKEDIN_MCP_ADDR` — HTTP listen addr (default `127.0.0.1:8766`, keep it on localhost)
 - `LINKEDIN_REDIRECT_URI` — OAuth callback (default `http://localhost:8779/auth/linkedin/callback`, must match app settings)
 - `LINKEDIN_SCOPES` — auth scopes (default `openid profile w_member_social`; add `w_organization_social` for company pages, needs Community Management API)
+
+## License
+
+MIT
