@@ -31,6 +31,10 @@ func main() {
 		if err := auth(); err != nil {
 			log.Fatal(err)
 		}
+	case "hosted":
+		if err := hosted(); err != nil {
+			log.Fatal(err)
+		}
 	case "http":
 		addr := os.Getenv("LINKEDIN_MCP_ADDR")
 		if addr == "" {
@@ -40,13 +44,13 @@ func main() {
 		if key == "" {
 			log.Fatal("LINKEDIN_MCP_KEY is required in http mode (any local process could post as you otherwise)")
 		}
-		h := mcp.NewStreamableHTTPHandler(func(*http.Request) *mcp.Server { return newServer() }, nil)
+		h := mcp.NewStreamableHTTPHandler(func(*http.Request) *mcp.Server { return newServer(localClient, false) }, nil)
 		log.Printf("linkedin-mcp listening on http://%s/mcp", addr)
 		mux := http.NewServeMux()
 		mux.Handle("/mcp", requireKey(key, h))
 		log.Fatal(http.ListenAndServe(addr, mux))
 	default:
-		if err := newServer().Run(context.Background(), &mcp.StdioTransport{}); err != nil {
+		if err := newServer(localClient, false).Run(context.Background(), &mcp.StdioTransport{}); err != nil {
 			log.Fatal(err)
 		}
 	}
@@ -73,7 +77,8 @@ func requireKey(key string, next http.Handler) http.Handler {
 	})
 }
 
-func client() (*Client, error) {
+// localClient posts as the single local user (token.json / env).
+func localClient(context.Context) (*Client, error) {
 	t, err := loadToken()
 	if err != nil {
 		return nil, err
@@ -97,12 +102,14 @@ type deleteInput struct {
 	URN string `json:"urn" jsonschema:"post URN returned by create_post, e.g. urn:li:share:123"`
 }
 
-func newServer() *mcp.Server {
+// newServer builds the tool set. getClient returns the LinkedIn client for the
+// caller; hosted=true refuses server-side file paths (multi-user server).
+func newServer(getClient func(context.Context) (*Client, error), hosted bool) *mcp.Server {
 	s := mcp.NewServer(&mcp.Implementation{Name: "linkedin", Version: "v0.1.0"}, nil)
 
 	mcp.AddTool(s, &mcp.Tool{Name: "whoami", Description: "Show the LinkedIn account this server posts as"},
 		func(ctx context.Context, req *mcp.CallToolRequest, _ empty) (*mcp.CallToolResult, any, error) {
-			c, err := client()
+			c, err := getClient(ctx)
 			if err != nil {
 				return nil, nil, err
 			}
@@ -114,11 +121,14 @@ func newServer() *mcp.Server {
 			if strings.TrimSpace(in.Text) == "" {
 				return nil, nil, fmt.Errorf("text is required")
 			}
+			if hosted && len(in.ImagePaths) > 0 {
+				return nil, nil, fmt.Errorf("image_paths is not available on the hosted server, send images_base64 instead")
+			}
 			in.Text = formatText(in.Text)
 			if n := utf8.RuneCountInString(in.Text); n > 3000 {
 				return nil, nil, fmt.Errorf("text is %d chars, LinkedIn max is 3000", n)
 			}
-			c, err := client()
+			c, err := getClient(ctx)
 			if err != nil {
 				return nil, nil, err
 			}
@@ -141,7 +151,7 @@ func newServer() *mcp.Server {
 			if n := utf8.RuneCountInString(in.Text); n > 1250 {
 				return nil, nil, fmt.Errorf("comment is %d chars, LinkedIn max is 1250", n)
 			}
-			c, err := client()
+			c, err := getClient(ctx)
 			if err != nil {
 				return nil, nil, err
 			}
@@ -154,7 +164,7 @@ func newServer() *mcp.Server {
 
 	mcp.AddTool(s, &mcp.Tool{Name: "delete_post", Description: "Delete a LinkedIn post by URN"},
 		func(ctx context.Context, req *mcp.CallToolRequest, in deleteInput) (*mcp.CallToolResult, any, error) {
-			c, err := client()
+			c, err := getClient(ctx)
 			if err != nil {
 				return nil, nil, err
 			}

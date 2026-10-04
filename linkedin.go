@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -120,16 +121,38 @@ func (c *Client) fillProfile() error {
 	return nil
 }
 
-func (c *Client) uploadImage(owner, path string) (string, error) {
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return "", err
+// images resolves image_paths and images_base64 to raw bytes.
+func (in PostInput) images() ([][]byte, error) {
+	var out [][]byte
+	for _, p := range in.ImagePaths {
+		b, err := os.ReadFile(p)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, b)
+	}
+	for i, s := range in.ImagesBase64 {
+		if _, after, ok := strings.Cut(s, ";base64,"); ok { // allow data: URLs
+			s = after
+		}
+		b, err := base64.StdEncoding.DecodeString(s)
+		if err != nil {
+			return nil, fmt.Errorf("images_base64[%d]: %w", i, err)
+		}
+		out = append(out, b)
+	}
+	return out, nil
+}
+
+func (c *Client) uploadImage(owner string, data []byte) (string, error) {
+	if len(data) > 8<<20 {
+		return "", fmt.Errorf("image is %d bytes, max 8MB", len(data))
 	}
 	// check content, not extension, so a non-image file can't be posted publicly
 	switch ct := http.DetectContentType(data); ct {
 	case "image/jpeg", "image/png", "image/gif":
 	default:
-		return "", fmt.Errorf("%s is %s, only jpg/png/gif allowed", path, ct)
+		return "", fmt.Errorf("image is %s, only jpg/png/gif allowed", ct)
 	}
 	var init struct {
 		Value struct {
@@ -159,15 +182,16 @@ func (c *Client) uploadImage(owner, path string) (string, error) {
 }
 
 type PostInput struct {
-	Text       string   `json:"text" jsonschema:"post body; #hashtags become real hashtags, **bold** and *italic* become Unicode bold/italic"`
-	Visibility string   `json:"visibility,omitempty" jsonschema:"PUBLIC (default) or CONNECTIONS"`
-	ImagePaths []string `json:"image_paths,omitempty" jsonschema:"local image files to attach (jpg/png/gif)"`
-	ImageAlt   string   `json:"image_alt,omitempty" jsonschema:"alt text for single image"`
-	LinkURL    string   `json:"link_url,omitempty" jsonschema:"article link to attach (ignored if images given)"`
-	LinkTitle  string   `json:"link_title,omitempty" jsonschema:"title for the link card"`
-	LinkDesc   string   `json:"link_description,omitempty" jsonschema:"description for the link card"`
-	Author     string   `json:"author,omitempty" jsonschema:"author URN, default is you; use urn:li:organization:ID for a company page"`
-	Draft      bool     `json:"draft,omitempty" jsonschema:"save as draft instead of publishing"`
+	Text         string   `json:"text" jsonschema:"post body; #hashtags become real hashtags, **bold** and *italic* become Unicode bold/italic"`
+	Visibility   string   `json:"visibility,omitempty" jsonschema:"PUBLIC (default) or CONNECTIONS"`
+	ImagePaths   []string `json:"image_paths,omitempty" jsonschema:"local image files to attach (jpg/png/gif); local server only"`
+	ImagesBase64 []string `json:"images_base64,omitempty" jsonschema:"images to attach as base64 (jpg/png/gif, max 8MB each)"`
+	ImageAlt     string   `json:"image_alt,omitempty" jsonschema:"alt text for single image"`
+	LinkURL      string   `json:"link_url,omitempty" jsonschema:"article link to attach (ignored if images given)"`
+	LinkTitle    string   `json:"link_title,omitempty" jsonschema:"title for the link card"`
+	LinkDesc     string   `json:"link_description,omitempty" jsonschema:"description for the link card"`
+	Author       string   `json:"author,omitempty" jsonschema:"author URN, default is you; use urn:li:organization:ID for a company page"`
+	Draft        bool     `json:"draft,omitempty" jsonschema:"save as draft instead of publishing"`
 }
 
 func (c *Client) CreatePost(in PostInput) (string, error) {
@@ -196,23 +220,27 @@ func (c *Client) CreatePost(in PostInput) (string, error) {
 		"isReshareDisabledByAuthor": false,
 	}
 
+	imgs, err := in.images()
+	if err != nil {
+		return "", err
+	}
 	switch {
-	case len(in.ImagePaths) == 1:
-		id, err := c.uploadImage(author, in.ImagePaths[0])
+	case len(imgs) == 1:
+		id, err := c.uploadImage(author, imgs[0])
 		if err != nil {
 			return "", err
 		}
 		post["content"] = map[string]any{"media": map[string]any{"id": id, "altText": in.ImageAlt}}
-	case len(in.ImagePaths) > 1:
-		var imgs []map[string]any
-		for _, p := range in.ImagePaths {
-			id, err := c.uploadImage(author, p)
+	case len(imgs) > 1:
+		var ids []map[string]any
+		for _, data := range imgs {
+			id, err := c.uploadImage(author, data)
 			if err != nil {
 				return "", err
 			}
-			imgs = append(imgs, map[string]any{"id": id})
+			ids = append(ids, map[string]any{"id": id})
 		}
-		post["content"] = map[string]any{"multiImage": map[string]any{"images": imgs}}
+		post["content"] = map[string]any{"multiImage": map[string]any{"images": ids}}
 	case in.LinkURL != "":
 		art := map[string]any{"source": in.LinkURL, "title": in.LinkTitle}
 		if art["title"] == "" {
