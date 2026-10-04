@@ -241,7 +241,8 @@ func TestHostedFlow(t *testing.T) {
 
 func TestSafeNext(t *testing.T) {
 	for in, want := range map[string]string{"/authorize?x=1": "/authorize?x=1", "//evil.com": "/dashboard",
-		"https://evil.com": "/dashboard", "/\\evil.com": "/dashboard", "": "/dashboard"} {
+		"https://evil.com": "/dashboard", "/\\evil.com": "/dashboard", "": "/dashboard",
+		"/\t/evil.com": "/dashboard", "/\r\n/evil.com": "/dashboard", "/%09/evil.com": "/%09/evil.com"} {
 		if got := safeNext(in); got != want {
 			t.Errorf("safeNext(%q) = %q, want %q", in, got, want)
 		}

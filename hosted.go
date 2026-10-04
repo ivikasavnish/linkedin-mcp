@@ -270,8 +270,13 @@ func (a *app) post(h func(http.ResponseWriter, *http.Request, string)) http.Hand
 }
 
 // safeNext only allows local paths, so login can't be used as an open redirect.
+// Control chars are rejected because browsers strip tab/CR/LF, turning "/\t/x" into "//x".
 func safeNext(n string) string {
-	if !strings.HasPrefix(n, "/") || strings.HasPrefix(n, "//") || strings.Contains(n, "\\") {
+	if strings.IndexFunc(n, func(r rune) bool { return r < 0x20 || r == 0x7f || r == '\\' }) >= 0 {
+		return "/dashboard"
+	}
+	u, err := url.Parse(n)
+	if err != nil || u.Scheme != "" || u.Host != "" || !strings.HasPrefix(n, "/") || strings.HasPrefix(n, "//") {
 		return "/dashboard"
 	}
 	return n
