@@ -14,5 +14,6 @@
 | 4c5 | 2026-10-04 | [04-comment-part5.md](04-comment-part5.md) | urn:li:comment:(urn:li:share:7512364073494343681,7512364680238075904) | Part 5/5: decision matrix + cost math |
 | 4c6 | 2026-10-04 | [04-comment-part6.md](04-comment-part6.md) | urn:li:comment:(urn:li:share:7512364073494343681,7512365358830395392) | Bonus 6: pod cgroup PromQL (throttle ratio, frozen secs, usage/limit) |
 | 4c7 | 2026-10-04 | [04-comment-part7.md](04-comment-part7.md) | urn:li:comment:(urn:li:share:7512364073494343681,7512365373917229056) | Bonus 7: PSI, Go sched latency histogram, eBPF runqlat |
+| 5 | 2026-10-04 | [05-aoe-voice.md](05-aoe-voice.md) | urn:li:share:7512451424354512896 | AoE3 offline voice control (Vosk, en+hi), learning by doing |
 
 View: `https://www.linkedin.com/feed/update/<URN>/`
