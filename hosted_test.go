@@ -247,3 +247,40 @@ func TestSafeNext(t *testing.T) {
 		}
 	}
 }
+
+func TestClientIP(t *testing.T) {
+	for _, c := range []struct{ remote, hdr, want string }{
+		{"127.0.0.1:5000", "203.0.113.9", "203.0.113.9"},     // via nginx
+		{"198.51.100.7:5000", "203.0.113.9", "198.51.100.7"}, // direct: header ignored
+		{"[2001:db8::1]:443", "", "2001:db8::1"},
+		{"127.0.0.1:5000", "not-an-ip", "127.0.0.1"},
+	} {
+		r := &http.Request{RemoteAddr: c.remote, Header: http.Header{}}
+		if c.hdr != "" {
+			r.Header.Set("X-Real-IP", c.hdr)
+		}
+		if got := clientIP(r); got != c.want {
+			t.Errorf("clientIP(%s, %q) = %q, want %q", c.remote, c.hdr, got, c.want)
+		}
+	}
+}
+
+func TestFreeByIDOnly(t *testing.T) {
+	a := &app{free: map[string]bool{"AbC": true}}
+	if a.paid(&User{ID: "abc", Email: "AbC"}) {
+		t.Fatal("free access matched on case-folded id or email")
+	}
+	if !a.paid(&User{ID: "AbC"}) {
+		t.Fatal("free id not honored")
+	}
+}
+
+func TestLimiterGC(t *testing.T) {
+	l := &limiter{max: 1, per: time.Millisecond, hits: map[string][]time.Time{}}
+	l.allow("a")
+	time.Sleep(3 * time.Millisecond)
+	l.gc()
+	if len(l.hits) != 0 {
+		t.Fatal("stale limiter keys kept")
+	}
+}

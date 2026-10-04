@@ -1,0 +1,29 @@
+[Unit]
+Description=LinkedIn MCP hosted (linkedin.servloci.in)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=lmcp
+Group=lmcp
+ExecStart=/opt/linkedin-mcp/linkedin-mcp hosted
+EnvironmentFile=/etc/linkedin-mcp/env
+Environment=LMCP_DB=/var/lib/linkedin-mcp/linkedin-mcp.db
+Environment=LMCP_ADDR=127.0.0.1:8767
+StateDirectory=linkedin-mcp
+StateDirectoryMode=0700
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectKernelTunables=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+LockPersonality=true
+MemoryDenyWriteExecute=true
+
+[Install]
+WantedBy=multi-user.target

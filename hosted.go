@@ -33,7 +33,7 @@ type app struct {
 	liID, liSec                     string
 	store                           *Store
 	signKey                         []byte
-	free                            map[string]bool // user ids / emails that skip billing
+	free                            map[string]bool // LinkedIn user ids that skip billing
 	rzpID, rzpSec, rzpHook, rzpPlan string
 	limiter                         *limiter
 }
@@ -69,12 +69,13 @@ func hosted() error {
 	}
 	for _, f := range strings.Split(os.Getenv("LMCP_FREE_USERS"), ",") {
 		if f = strings.TrimSpace(f); f != "" {
-			a.free[strings.ToLower(f)] = true
+			a.free[f] = true // LinkedIn ids are case-sensitive
 		}
 	}
 	go func() {
 		for range time.Tick(time.Hour) {
 			st.Sweep()
+			a.limiter.gc()
 		}
 	}()
 
@@ -139,7 +140,8 @@ func (a *app) verifyBearer(ctx context.Context, tok string, r *http.Request) (*m
 }
 
 func (a *app) paid(u *User) bool {
-	return a.free[strings.ToLower(u.ID)] || a.free[strings.ToLower(u.Email)] || time.Now().Before(u.PaidUntil)
+	// free access by LinkedIn id only: email is not proof of identity
+	return a.free[u.ID] || time.Now().Before(u.PaidUntil)
 }
 
 // clientFor returns the per-call LinkedIn client getter for a user. Billing,
@@ -170,6 +172,18 @@ type limiter struct {
 	max  int
 	per  time.Duration
 	hits map[string][]time.Time
+}
+
+// gc drops keys with no hits in the window, so the map can't grow forever.
+func (l *limiter) gc() {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	cut := time.Now().Add(-l.per)
+	for k, h := range l.hits {
+		if len(h) == 0 || h[len(h)-1].Before(cut) {
+			delete(l.hits, k)
+		}
+	}
 }
 
 func (l *limiter) allow(key string) bool {
@@ -363,7 +377,7 @@ func (a *app) showDashboard(w http.ResponseWriter, r *http.Request, uid, newKey 
 		return
 	}
 	a.render(w, "dashboard", map[string]any{
-		"Base": a.base, "U": u, "Paid": a.paid(u), "Free": a.free[strings.ToLower(u.ID)] || a.free[strings.ToLower(u.Email)],
+		"Base": a.base, "U": u, "Paid": a.paid(u), "Free": a.free[u.ID],
 		"LiOK": time.Now().Before(u.LiExpires), "NewKey": newKey, "CSRF": a.csrf(r),
 		"Billing": a.rzpID != "" && a.rzpPlan != "", "Paying": u.SubStatus == "active" || u.SubStatus == "authenticated",
 	})

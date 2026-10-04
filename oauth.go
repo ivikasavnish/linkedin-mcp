@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"io"
 	"log"
+	"net"
 	"net/http"
 	"net/url"
 	"regexp"
@@ -83,11 +84,18 @@ func oauthErr(w http.ResponseWriter, code int, e, desc string) {
 	writeJSON(w, code, map[string]string{"error": e, "error_description": desc})
 }
 
+// clientIP trusts X-Real-IP only from the local nginx proxy; anyone else could
+// rotate the header to dodge rate limits.
 func clientIP(r *http.Request) string {
-	if ip := r.Header.Get("X-Real-IP"); ip != "" { // set by nginx
-		return ip
+	host, _, err := net.SplitHostPort(r.RemoteAddr)
+	if err != nil {
+		host = r.RemoteAddr
 	}
-	host, _, _ := strings.Cut(r.RemoteAddr, ":")
+	if ip := net.ParseIP(host); ip != nil && ip.IsLoopback() {
+		if real := net.ParseIP(strings.TrimSpace(r.Header.Get("X-Real-IP"))); real != nil {
+			return real.String()
+		}
+	}
 	return host
 }
 
