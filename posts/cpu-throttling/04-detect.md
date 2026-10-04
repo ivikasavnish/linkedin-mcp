@@ -66,6 +66,56 @@ ps -o nlwp= -p <pid>                    # threads in the process
 - Go: log `runtime.GOMAXPROCS(0)` at startup. It should equal your CPU limit.
 - C++: if you use `hardware_concurrency()`, it's probably the host core count. Fix it.
 
+## Pods in Grafana: measure from cgroups, not CPU %
+
+CFS enforces quota every 100ms; Prometheus scrapes every 15–30s. A CPU % gauge averages the freezes away. Use cgroup counters with `rate()`, pressure, and histograms.
+
+**Throttle ratio per container (cAdvisor):**
+
+```promql
+sum by (namespace, pod, container) (rate(container_cpu_cfs_throttled_periods_total{container!=""}[5m]))
+  / sum by (namespace, pod, container) (rate(container_cpu_cfs_periods_total{container!=""}[5m]))
+```
+
+**Seconds frozen per second** — plot next to p99 latency:
+
+```promql
+rate(container_cpu_cfs_throttled_seconds_total{container!=""}[5m])
+```
+
+**Usage vs limit (cAdvisor + kube-state-metrics):**
+
+```promql
+sum by (namespace, pod, container) (rate(container_cpu_usage_seconds_total{container!=""}[5m]))
+  / sum by (namespace, pod, container) (kube_pod_container_resource_limits{resource="cpu"})
+```
+
+Throttle ratio > 5% while usage/limit < 70% → bursty threads, not lack of CPU.
+
+**CPU pressure (PSI, cgroup v2)** — how long tasks *waited* for CPU, covering throttling, contention and steal:
+
+```bash
+cat /sys/fs/cgroup/<pod-cgroup>/cpu.pressure
+# some avg10=12.50 avg60=8.10 avg300=3.20 total=...
+```
+
+```promql
+rate(node_pressure_cpu_waiting_seconds_total[5m])                 # node, node-exporter
+rate(container_pressure_cpu_waiting_seconds_total[5m])            # per container, newer cAdvisor/kubelet with PSI enabled
+```
+
+**Go scheduler latency histogram** (`runtime/metrics` `/sched/latencies:seconds`, enable with client_golang `WithGoCollectorRuntimeMetrics`):
+
+```promql
+histogram_quantile(0.99, sum by (le, pod) (rate(go_sched_latencies_seconds_bucket[5m])))
+```
+
+p99 in milliseconds means goroutines are queueing for a CPU.
+
+**eBPF run-queue latency** (bcc `runqlat`, Coroot, Pixie): per-container scheduling delay with no code changes — works for Rust and C++ too.
+
+Rule: alert on *waiting* (throttled seconds, PSI, sched latency), not on usage.
+
 ## Reading the results
 
 | Signal | Meaning | Action |

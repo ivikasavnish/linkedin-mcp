@@ -12,5 +12,7 @@
 | 4c3 | 2026-10-04 | [04-comment-part3.md](04-comment-part3.md) | urn:li:comment:(urn:li:share:7512364073494343681,7512364649615400960) | Part 3/5: IO-heavy: medium CPUs |
 | 4c4 | 2026-10-04 | [04-comment-part4.md](04-comment-part4.md) | urn:li:comment:(urn:li:share:7512364073494343681,7512364665302171648) | Part 4/5: detect throttling, 5 checks |
 | 4c5 | 2026-10-04 | [04-comment-part5.md](04-comment-part5.md) | urn:li:comment:(urn:li:share:7512364073494343681,7512364680238075904) | Part 5/5: decision matrix + cost math |
+| 4c6 | 2026-10-04 | [04-comment-part6.md](04-comment-part6.md) | urn:li:comment:(urn:li:share:7512364073494343681,7512365358830395392) | Bonus 6: pod cgroup PromQL (throttle ratio, frozen secs, usage/limit) |
+| 4c7 | 2026-10-04 | [04-comment-part7.md](04-comment-part7.md) | urn:li:comment:(urn:li:share:7512364073494343681,7512365373917229056) | Bonus 7: PSI, Go sched latency histogram, eBPF runqlat |
 
 View: `https://www.linkedin.com/feed/update/<URN>/`
