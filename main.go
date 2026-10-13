@@ -174,6 +174,25 @@ func newServer(getClient func(context.Context) (*Client, error), hosted bool) *m
 			return text("deleted " + in.URN), nil, nil
 		})
 
+	// X uses one server-wide token, so it is local-only, never hosted.
+	if !hosted {
+		mcp.AddTool(s, &mcp.Tool{Name: "x_post", Description: "Publish a post (or a thread, one entry per post) on X/Twitter. Long posts up to 25000 chars (Premium; X_MAX_CHARS overrides). Supports **bold** and *italic*. Posts are public — confirm content with the user first."},
+			func(ctx context.Context, req *mcp.CallToolRequest, in xPostInput) (*mcp.CallToolResult, any, error) {
+				ids, err := xPost(in)
+				var b strings.Builder
+				for _, id := range ids {
+					fmt.Fprintf(&b, "posted: https://x.com/i/status/%s\n", id)
+				}
+				if err != nil {
+					if len(ids) == 0 {
+						return nil, nil, err
+					}
+					fmt.Fprintf(&b, "stopped: %v\n", err)
+				}
+				return text(b.String()), nil, nil
+			})
+	}
+
 	return s
 }
 
