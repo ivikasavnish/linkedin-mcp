@@ -15,5 +15,7 @@
 | 4c6 | 2026-10-04 | [04-comment-part6.md](04-comment-part6.md) | urn:li:comment:(urn:li:share:7512364073494343681,7512365358830395392) | Bonus 6: pod cgroup PromQL (throttle ratio, frozen secs, usage/limit) |
 | 4c7 | 2026-10-04 | [04-comment-part7.md](04-comment-part7.md) | urn:li:comment:(urn:li:share:7512364073494343681,7512365373917229056) | Bonus 7: PSI, Go sched latency histogram, eBPF runqlat |
 | 5 | 2026-10-04 | [05-aoe-voice.md](05-aoe-voice.md) | urn:li:share:7512451424354512896 | AoE3 offline voice control (Vosk, en+hi), learning by doing |
+| 6 | 2026-10-08 | [06-ai-phone-agent-poc.md](06-ai-phone-agent-poc.md) | urn:li:ugcPost:7514028213329793024 | bt-utils AI phone agent POC (HR screening), first post with video (new video_path) |
+| 7 | 2026-10-17 | [07-findai.md](07-findai.md) | urn:li:share:7517265778287497216 | findai launch (find -ai), link card to repo; also on X: https://x.com/i/status/2111500093769875868 |
 
 View: `https://www.linkedin.com/feed/update/<URN>/`
